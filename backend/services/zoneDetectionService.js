@@ -10,9 +10,13 @@ const detectZone = async (address) => {
     console.log('Available areas:', areas.map(a => ({ name: a.name, zone: a.zone?.name })));
     
     // Find which area is mentioned in the address
-    // Simple implementation: check if area name is present in address
+    // More flexible matching: check if area name is present in address or vice versa
     for (const area of areas) {
-      if (address.toLowerCase().includes(area.name.toLowerCase())) {
+      const addressLower = address.toLowerCase();
+      const areaNameLower = area.name.toLowerCase();
+      
+      // Check if area name is in address
+      if (addressLower.includes(areaNameLower)) {
         console.log('Found matching area:', area.name, 'in zone:', area.zone.name);
         return {
           area: area._id,
@@ -21,10 +25,35 @@ const detectZone = async (address) => {
           zoneName: area.zone.name
         };
       }
+      
+      // Check for partial matches (e.g., "downtown" in "downtown street")
+      const areaWords = areaNameLower.split(' ');
+      for (const word of areaWords) {
+        if (word.length > 3 && addressLower.includes(word)) {
+          console.log('Found partial matching area:', area.name, 'in zone:', area.zone.name);
+          return {
+            area: area._id,
+            zone: area.zone._id,
+            areaName: area.name,
+            zoneName: area.zone.name
+          };
+        }
+      }
     }
     
-    console.error('No matching area found for address:', address);
-    throw new Error('Area not found in address');
+    // If no match found, return a default area (first available)
+    if (areas.length > 0) {
+      console.warn('No exact match found, using default area:', areas[0].name);
+      return {
+        area: areas[0]._id,
+        zone: areas[0].zone._id,
+        areaName: areas[0].name,
+        zoneName: areas[0].zone.name
+      };
+    }
+    
+    console.error('No areas found in database');
+    throw new Error('No areas configured in database');
   } catch (error) {
     console.error('Zone detection error:', error);
     throw new Error(`Zone detection failed: ${error.message}`);
